@@ -1,0 +1,390 @@
+#+TITLE: Treap In ATS
+#+AUTHOR: Aditya Siram
+#+PROPERTY: header-args    :comments no
+#+OPTIONS: ^:nil ;; let an underscore be an underscore, disable sub-superscripting
+#+OPTIONS: timestamp:nil
+
+* Overview
+Below is the [[http://ats-lang.org][ATS]] entry to the [[https://github.com/frol/completely-unscientific-benchmarks][Completely Unscientific Benchmarks]] challenge which
+implements the [[https://en.wikipedia.org/wiki/Treap][Treap]] datastructure. The implementation is a literate program
+that shows off some of ATS' typesafe memory management and pointer arithmetic
+features. Please note that I do not explain the algorithms themselves, only the
+code because ATS is quite complex and the essence of the datastructure gets lost in
+memory management and linear logic details. I can highly recommend perusing the
+[[https://github.com/frol/completely-unscientific-benchmarks/blob/master/nim/main.nim][Nim]] version to get an idea for how the datastructure works, I myself used it as
+a guide. I also assume some familiarity with ML-like languages.
+
+* Imports
+First we need a couple of imports, the first one is standard and the second is
+needed to generate the random number with which we seed the initial tree.
+#+BEGIN_SRC text :tangle treap_manual.dats
+#include "share/atspre_staload.hats"
+staload STDLIB = "libats/libc/SATS/stdlib.sats"
+#+END_SRC
+
+* The Treap Datastructure
+The treap datastructure can be encoded in a ML-like datatype:
+#+BEGIN_SRC text :tangle treap_manual.dats
+datavtype treap_vt = treap_vt of (int,lint,Option_vt(treap_vt),Option_vt(treap_vt))
+#+END_SRC
+
+It consists of a type constructor ~treap_vt~ which is parameterized on some
+~int~ payload, that node's ~lint~ (long int) priority in the tree and the left
+and right subtrees. The keyword ~datavtype~ (instead of ~datatype~) means that
+the treap is a linear resource allocated on the heap. The ATS type system then
+tracks it to make sure it is accessed safely and properly freed. Calling it
+~treap_vt~ is a naming convention that makes it easier to see that in code. The
+~Option_vt(treap_vt)~ in the definitions of the left and right subtree indicate
+that the subtree can be ~None_vt()~, a null pointer, or ~Some_vt(treap_vt(...))~
+a pointer to some location on the heap that contains the subtree. As you may
+have guessed ~Option_vt(...)~ imported from the ATS prelude is a combination of
+the usual ~Option~ type from ML languages, some memory location and a linear
+variable to mediate access.
+ 
+* Freeing the treap
+First we need a utility function to free the treap when we are done with it:
+#+BEGIN_SRC text :tangle treap_manual.dats
+extern fun free_treap(
+  t : Option_vt(treap_vt)
+) : void
+
+implement free_treap(t) =
+  case+ t of
+   | ~Some_vt(~treap_vt(_,_,l,r)) => (free_treap(l); free_treap(r); ())
+   | ~None_vt() => ()
+#+END_SRC
+
+It starts with a function definition and a type signature saying that it takes
+possibly null pointer to a treap and has no output.
+
+The implementation shows a fun feature of ATS' pattern matching, the squiggle
+'~' in front of the pattern tells ATS to automatically free the resource and
+consume the associated linear variable when it matches the pattern. When the
+treap contains some data it will match the '~Some_vt(~treap_vt(...))' which frees the
+pointer to the treap and the treap's non-pointer data. Then all that remains is to
+recursively free the subtrees. With the linear variable consumed the treap
+can no longer be used in any subsequent code.
+
+* Merge
+The ~merge~ function signature says it takes two treaps, consumes them so they
+are unavailable in any code following the merge and hands back a fresh treap. 
+
+#+BEGIN_SRC text :tangle treap_manual.dats
+extern fun merge(
+  lower: Option_vt(treap_vt),
+  greater: Option_vt(treap_vt)
+): Option_vt(treap_vt)
+#+END_SRC
+
+In reality the implementation cannibalizes the input treaps to make the
+resulting one but that's safe since the arguments cannot be used after being passed to
+~merge~.
+
+Because it reuses parts of its input arguments ~merge~ is the most complex of
+the ATS treap operations but also uses all the features I want to showcase. Once
+~merge~ becomes clear so should to the rest of the operations so here we go:
+
+#+BEGIN_SRC text :tangle treap_manual.dats
+implement merge(lower,greater) =
+  let
+    var res : Option_vt(treap_vt)
+    fun loop (
+          lower: Option_vt(treap_vt),
+          greater: Option_vt(treap_vt),
+          res: &Option_vt(treap_vt)? >> Option_vt(treap_vt)
+        ) : void =
+        case+ (lower,greater) of
+          | (~None_vt(), ~None_vt()) => res := None_vt()
+          | (l, ~None_vt()) => res := l
+          | (~None_vt(), g) => res := g
+          | (Some_vt(l as treap_vt(_,ly,_,_)), Some_vt(g as treap_vt(_,gy,_,_))) =>
+              if (ly < gy)
+              then
+                case+ l of
+                  | @treap_vt(_,_,_,lr) =>
+                    let
+                      val lr_ = lr
+                    in
+                      begin
+                        res := lower;
+                        loop(lr_,greater,lr);
+                        fold@(l)
+                      end
+                    end
+              else
+                case+ g of
+                  | @treap_vt(_,_,gl,_) =>
+                    let
+                      val gl_ = gl
+                    in
+                      begin
+                        res := greater;
+                        loop(lower,gl_,gl);
+                        fold@(g)
+                      end
+                    end
+    val () = loop(lower,greater,res)
+  in
+    res
+  end
+#+END_SRC
+
+Stepping back from the implementation details the overall structure of ~merge~
+is:
+#+BEGIN_EXAMPLE
+implement merge(lower,greater) =
+  let
+    var res : Option_vt(treap_vt)
+    fun loop (...) ...
+    val () = loop(lower,greater,res)
+  in
+    res
+  end
+#+END_EXAMPLE
+
+Inside of the ~let~ block is a stack allocated variable ~res~ (that's what the
+~var~ keyword means) that will hold the a pointer to merged treap,
+a function ~loop~ which will traverse the trees recursively merging them into
+~res~. ~loop~ is then invoked and the resulting pointer is returned outside the
+~let~ block.
+
+The type of ~res~ in ~loop~'s type signature is interesting:
+#+BEGIN_EXAMPLE
+fun loop (
+      lower: Option_vt(treap_vt),
+      greater: Option_vt(treap_vt),
+      res: &Option_vt(treap_vt)? >> Option_vt(treap_vt)
+    ) : void = ...
+#+END_EXAMPLE
+
+The ~&~ and ~?~ that bookend ~Option_vt(...)~ say that ~res~ is a reference and
+possibly uninitialized respectively which is what we expect since we are passing
+a reference to a stack variable and haven't initialized it. Then rest of it, ~>>
+Option_vt(...)~ indicates that once the function is done executing that ~res~ is
+guaranteed to some initialized and valid treap in memory.
+
+The body of ~loop~ then pattern matches over the arguments. The first three
+conditions say that ~res~ set to ~null~ when both treaps are ~null~ or the
+non-null one if one of them is. Then the function terminates. The final
+condition where the treaps need to be merged is the most complex case so let's
+break it down by only looking at the case where the priority of the left subtree
+is the lesser so the right subtree is merged into the left:
+#+BEGIN_EXAMPLE
+...
+| (Some_vt(l as treap_vt(_,ly,_,_)), Some_vt(g as treap_vt(_,gy,_,_))) =>
+    if (ly < gy)
+    then
+      case+ l of
+        | @treap_vt(_,_,_,lr) =>
+          ...
+    else
+      ...
+#+END_EXAMPLE
+
+The new bit is the ~@~ in front of the pattern match. Called "unfolding" it is
+another pattern matching shortcut which tells ATS to implicitly bring into scope
+proofs that allow us to view the whole datastructure as a set of pointers (or
+more precisely l-values) so we can mutate parts of it. In this case the ~@~
+brings into scope proofs of pointers to ~treap_vt~ and the right subtree ~lr~.
+If you have some familiarity with Rust you can think of this a much more
+generalized version of borrowing a resource mutably.
+
+The subtree ~lr~ is then moved into ~_lr~ and passed back into the recursive
+call as the lower treap along with ~lr~ which is now a reference and waiting to
+be filled in sometime before the recursive call terminates. Finally the
+~fold@(l)~ is special typelevel function which "re-folds" (consumes) the pointer
+proofs so they can no longer be treated as l-values in subsequent code. Again,
+if you have some familarity with Rust it's like the closing curly brace which
+ends the scope into which something is borrowed mutably.
+#+BEGIN_EXAMPLE
+let
+  val lr_ = lr
+in
+  begin
+    res := lower;
+    loop(lr_,greater,lr);
+    fold@(l)
+  end
+end
+#+END_EXAMPLE
+
+The rest of of the function does the same unfold-fold dance with the right subtree.
+
+While most of this is sort of documented in ATS book's section on [[http://ats-lang.sourceforge.net/DOCUMENT/INT2PROGINATS/HTML/INT2PROGINATS-BOOK-onechunk.html#linear_lists][Linear Lists]]
+it was quite difficult for me to understand and get right so if you find it
+overwhelming and convoluted you are not alone. On the upside that's the last of
+the concepts required for understanding the rest of the code.
+
+* Split Binary
+Splitting a treap into two along a value uses the same concepts we say in the [[Merge][merge]]
+operation but instead of taking two treaps and returning one, it takes one treap
+and a value and returns a pair:
+#+BEGIN_SRC text :tangle treap_manual.dats
+extern fun split_binary(
+  t : Option_vt(treap_vt),
+  i : int
+): (Option_vt(treap_vt), Option_vt(treap_vt))
+
+implement split_binary(t,i) =
+  let
+    fun loop (
+          curr : Option_vt(treap_vt)
+        ): (Option_vt(treap_vt), Option_vt(treap_vt)) =
+        case+ curr of
+          | ~None_vt() => (None_vt(),None_vt())
+          | Some_vt(t as treap_vt(lx,_,_,_)) =>
+              if (lx < i) then
+                case+ t of
+                  | @treap_vt(_,_,_,lr) =>
+                      let
+                        val _lr = lr
+                        val (l,r) = loop(_lr)
+                      in
+                        begin
+                          lr := l;
+                          fold@(t);
+                          (curr,r)
+                        end
+                      end
+              else
+                case+ t of
+                  | @treap_vt(_,_,ll,_) =>
+                      let
+                        val _ll = ll
+                        val (l,r) = loop(_ll)
+                      in
+                        begin
+                          ll := r;
+                          fold@(t);
+                          (l,curr)
+                        end
+                      end
+  in
+    loop(t)
+  end
+#+END_SRC
+
+The ~let~ body is roughly the same, there is a ~loop~ function which traverses
+the tree and going left or right depending on the priority at the node and the  
+subtree is "unfolded", moved and refolded so it can be mutated. If [[Merge][merge]] makes
+sense there's nothing new to ~split_binary~.
+
+
+* And the rest ...
+The rest of the operations just delegate to the two primitives [[Merge][merge]] and [[Split Binary][split
+binary]] so I'll just present them without explanation:
+
+#+BEGIN_SRC text :tangle treap_manual.dats
+extern fun merge3(
+  l : Option_vt(treap_vt),
+  eq : Option_vt(treap_vt),
+  g : Option_vt(treap_vt)
+): Option_vt(treap_vt)
+
+implement merge3(l,eq,g) =
+  merge(merge(l,eq),g)
+
+extern fun split(
+  t: Option_vt(treap_vt),
+  i: int
+): (Option_vt(treap_vt),Option_vt(treap_vt),Option_vt(treap_vt))
+
+implement split(t,i) =
+  let
+    val+ (l,eq_gr) = split_binary(t,i)
+    val+ (eq,gr) = split_binary(eq_gr,i+1)
+  in
+    (l,eq,gr)
+  end
+
+extern fun has_value(
+  t: Option_vt(treap_vt),
+  i: int
+): (Option_vt(treap_vt), bool)
+
+implement has_value(t,i) =
+  let
+    val+(l,eq,g) = split(t,i)
+  in
+    case+ eq of
+      | ~None_vt() => (merge(l,g),false)
+      | eq => (merge3(l,eq,g),true)
+  end
+
+extern fun new_treap(
+  i: int
+): Option_vt(treap_vt)
+
+implement new_treap(i) =
+  Some_vt(treap_vt(i,$STDLIB.random(),None_vt(),None_vt()))
+
+extern fun insert(
+  t: Option_vt(treap_vt),
+  i: int
+): Option_vt(treap_vt)
+
+implement insert(t,i) =
+  let
+    val+(l,eq,g) = split(t,i)
+  in
+    case+ eq of
+      | ~None_vt() => merge3(l,new_treap(i),g)
+      | _ => merge3(l,eq,g)
+  end
+
+extern fun erase(
+  t : Option_vt(treap_vt),
+  i : int
+) : Option_vt(treap_vt)
+
+implement erase(t,i) =
+  let
+    val+(l,eq,g) = split(t,i)
+  in
+    begin
+      free_treap(eq);
+      merge(l,g)
+    end
+  end
+#+END_SRC
+
+The ~main~ function constructs a starter treap and kicks off a loop inserting
+and deleting from the tree at some arbitrary intervals set forth by the
+[[https://github.com/frol/completely-unscientific-benchmarks][benchmarks]].
+ 
+#+BEGIN_SRC text :tangle treap_manual.dats
+implement main0(argc,argv) =
+  let
+    fun loop(
+      t: Option_vt(treap_vt),
+      i: int,
+      curr: int,
+      res: int
+    ):int =
+      case+ i of
+        | i when i >= 1000000 =>
+          begin
+            free_treap(t);
+            res
+          end
+        | _ =>
+          let
+            val curr = (curr*57+43) mod 10007
+            val i = i+1
+          in
+            case (i mod 3) of
+              | 0 => loop(insert(t,curr),i,curr,res)
+              | 1 => loop(erase(t,curr),i,curr,res)
+              | 2 =>
+                let
+                  val+(t,found) = has_value(t,curr)
+                in
+                  if found then loop(t,i,curr,res+1)
+                  else loop(t,i,curr,res)
+                end
+              | _ => loop(t,i,curr,res)
+          end
+  in
+    println! (loop(None_vt(),1,5,0))
+  end
+#+END_SRC

@@ -1,0 +1,67 @@
+#+TITLE: README
+#+AUTHOR: Aditya Siram
+#+PROPERTY: header-args    :comments no
+#+OPTIONS: ^:nil ;; let an underscore be an underscore, disable sub-superscripting
+#+OPTIONS: timestamp:nil
+
+* Overview
+This repo contains two implementations of the
+[[https://github.com/frol/completely-unscientific-benchmarks][treap challenge]] set forth by the Completely Unscientific Benchmarks game in the
+[[http://ats-lang.org][ATS programming language.]]
+
+The first implementation (~treap.dats~) isn't documented because it shows how ATS can be used
+as just another standard ML with persistent datastructures and full garbage
+collection; if you have some familiarity with ML-like languages there are no
+surprises. Although not well-advertised ATS can be pretty accessible with the
+"hard" parts freely mixed in when you need performance.
+
+The second (~treap-ats.org~) is a fully literate program that uses and explains
+the linear logic and typesafe manual memory management features of ATS. You can
+view it here on Github but the [[https://rawgit.com/deech/treap-ats/master/treap-ats.html][Rawgit link]] looks a lot better.
+
+* Installation
+You don't need to have ATS to run these examples, the ~build.sh~ script pulls
+ATS and its dependencies directly from Github, builds the compiler from scratch
+in ~./ATS/~ and compiles the implementations. Nothing outside this directory is
+affected. All you need is ~git~, ~libgmp~ and standard ~C~ build tools, on
+Debian based machines the following seems to suffice:
+#+BEGIN_EXAMPLE
+apt-get install build-essential
+#+END_EXAMPLE
+
+If all goes well there should be two executables in the current directory
+~treap~ and ~treap_manual~, the output of the first and second implementations
+respectively.
+
+I have only built this repo on Linux, OSX may work, Windows probably will not.
+
+* Performance
+The performance of the first GC'ed implementation is pretty bad which is
+expected because ATS falls back to ~libgc~ which isn't known for its speed.
+
+However I was disappointed with the second, it is currently trailing
+[[https://github.com/frol/completely-unscientific-benchmarks#tuned-implementations-scoreboard][Nim "fast"]] benchmark and I was hoping to get into the C++ range given the amount
+of control over memory ATS affords. As it turns out the problem is that the
+current manually managed implementation allocates and frees a lot more than
+expected:
+#+BEGIN_EXAMPLE
+==14206== Memcheck, a memory error detector
+==14206== Copyright (C) 2002-2015, and GNU GPL'd, by Julian Seward et al.
+==14206== Using Valgrind-3.12.0.SVN and LibVEX; rerun with -h for copyright info
+==14206== Command: ./treap_manual
+==14206== 
+331665
+==14206== 
+==14206== HEAP SUMMARY:
+==14206==     in use at exit: 0 bytes in 0 blocks
+==14206==   total heap usage: 666,667 allocs, 666,667 frees, 13,334,344 bytes allocated
+==14206== 
+==14206== All heap blocks were freed -- no leaks are possible
+==14206== 
+==14206== For counts of detected and suppressed errors, rerun with: -v
+==14206== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+#+END_EXAMPLE
+
+13MB is hilariously bad, the Nim implementation with GC on is a third of that.
+I'll chalk it up to my inexperience with ATS and will update the implementation
+when I figure it out but I wanted to get something out there in the interim.
