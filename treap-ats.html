@@ -1,0 +1,719 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Treap In ATS</title>
+<meta name="generator" content="Org mode" />
+<meta name="author" content="Aditya Siram" />
+<style type="text/css">
+ <!--/*--><![CDATA[/*><!--*/
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #ccc;
+    box-shadow: 3px 3px 3px #eee;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: visible;
+    padding-top: 1.2em;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    background-color: white;
+    top: -10px;
+    right: 10px;
+    padding: 3px;
+    border: 1px solid black;
+  }
+  pre.src:hover:before { display: inline;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { width: 90%; }
+  /*]]>*/-->
+</style>
+<script type="text/javascript">
+/*
+@licstart  The following is the entire license notice for the
+JavaScript code in this tag.
+
+Copyright (C) 2012-2018 Free Software Foundation, Inc.
+
+The JavaScript code in this tag is free software: you can
+redistribute it and/or modify it under the terms of the GNU
+General Public License (GNU GPL) as published by the Free Software
+Foundation, either version 3 of the License, or (at your option)
+any later version.  The code is distributed WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU GPL for more details.
+
+As additional permission under GNU GPL version 3 section 7, you
+may distribute non-source (e.g., minimized or compacted) forms of
+that code without the copy of the GNU GPL normally required by
+section 4, provided you include this license notice and a URL
+through which recipients can access the Corresponding Source.
+
+
+@licend  The above is the entire license notice
+for the JavaScript code in this tag.
+*/
+<!--/*--><![CDATA[/*><!--*/
+ function CodeHighlightOn(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(null != target) {
+     elem.cacheClassElem = elem.className;
+     elem.cacheClassTarget = target.className;
+     target.className = "code-highlighted";
+     elem.className   = "code-highlighted";
+   }
+ }
+ function CodeHighlightOff(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(elem.cacheClassElem)
+     elem.className = elem.cacheClassElem;
+   if(elem.cacheClassTarget)
+     target.className = elem.cacheClassTarget;
+ }
+/*]]>*///-->
+</script>
+</head>
+<body>
+<div id="content">
+<h1 class="title">Treap In ATS</h1>
+<div id="table-of-contents">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents">
+<ul>
+<li><a href="#org4f69842">1. Overview</a></li>
+<li><a href="#orgac573f3">2. Imports</a></li>
+<li><a href="#org2f066ba">3. The Treap Datastructure</a></li>
+<li><a href="#orgffd678c">4. Freeing the treap</a></li>
+<li><a href="#orgad0e0f1">5. Merge</a></li>
+<li><a href="#org794f5c0">6. Split Binary</a></li>
+<li><a href="#org255ec44">7. And the rest &#x2026;</a></li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-org4f69842" class="outline-2">
+<h2 id="org4f69842"><span class="section-number-2">1</span> Overview</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+Below is the <a href="http://ats-lang.org">ATS</a> entry to the <a href="https://github.com/frol/completely-unscientific-benchmarks">Completely Unscientific Benchmarks</a> challenge which
+implements the <a href="https://en.wikipedia.org/wiki/Treap">Treap</a> datastructure. The implementation is a literate program
+that shows off some of ATS' typesafe memory management and pointer arithmetic
+features. Please note that I do not explain the algorithms themselves, only the
+code because ATS is quite complex and the essence of the datastructure gets lost in
+memory management and linear logic details. I can highly recommend perusing the
+<a href="https://github.com/frol/completely-unscientific-benchmarks/blob/master/nim/main.nim">Nim</a> version to get an idea for how the datastructure works, I myself used it as
+a guide. I also assume some familiarity with ML-like languages.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgac573f3" class="outline-2">
+<h2 id="orgac573f3"><span class="section-number-2">2</span> Imports</h2>
+<div class="outline-text-2" id="text-2">
+<p>
+First we need a couple of imports, the first one is standard and the second is
+needed to generate the random number with which we seed the initial tree.
+</p>
+<div class="org-src-container">
+<pre class="src src-text">#include "share/atspre_staload.hats"
+staload STDLIB = "libats/libc/SATS/stdlib.sats"
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org2f066ba" class="outline-2">
+<h2 id="org2f066ba"><span class="section-number-2">3</span> The Treap Datastructure</h2>
+<div class="outline-text-2" id="text-3">
+<p>
+The treap datastructure can be encoded in a ML-like datatype:
+</p>
+<div class="org-src-container">
+<pre class="src src-text">datavtype treap_vt = treap_vt of (int,lint,Option_vt(treap_vt),Option_vt(treap_vt))
+</pre>
+</div>
+
+<p>
+It consists of a type constructor <code>treap_vt</code> which is parameterized on some
+<code>int</code> payload, that node's <code>lint</code> (long int) priority in the tree and the left
+and right subtrees. The keyword <code>datavtype</code> (instead of <code>datatype</code>) means that
+the treap is a linear resource allocated on the heap. The ATS type system then
+tracks it to make sure it is accessed safely and properly freed. Calling it
+<code>treap_vt</code> is a naming convention that makes it easier to see that in code. The
+<code>Option_vt(treap_vt)</code> in the definitions of the left and right subtree indicate
+that the subtree can be <code>None_vt()</code>, a null pointer, or <code>Some_vt(treap_vt(...))</code>
+a pointer to some location on the heap that contains the subtree. As you may
+have guessed <code>Option_vt(...)</code> imported from the ATS prelude is a combination of
+the usual <code>Option</code> type from ML languages, some memory location and a linear
+variable to mediate access.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgffd678c" class="outline-2">
+<h2 id="orgffd678c"><span class="section-number-2">4</span> Freeing the treap</h2>
+<div class="outline-text-2" id="text-4">
+<p>
+First we need a utility function to free the treap when we are done with it:
+</p>
+<div class="org-src-container">
+<pre class="src src-text">extern fun free_treap(
+  t : Option_vt(treap_vt)
+) : void
+
+implement free_treap(t) =
+  case+ t of
+   | ~Some_vt(~treap_vt(_,_,l,r)) =&gt; (free_treap(l); free_treap(r); ())
+   | ~None_vt() =&gt; ()
+</pre>
+</div>
+
+<p>
+It starts with a function definition and a type signature saying that it takes
+possibly null pointer to a treap and has no output.
+</p>
+
+<p>
+The implementation shows a fun feature of ATS' pattern matching, the squiggle
+'~' in front of the pattern tells ATS to automatically free the resource and
+consume the associated linear variable when it matches the pattern. When the
+treap contains some data it will match the '~Some_vt(~treap_vt(&#x2026;))' which frees the
+pointer to the treap and the treap's non-pointer data. Then all that remains is to
+recursively free the subtrees. With the linear variable consumed the treap
+can no longer be used in any subsequent code.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgad0e0f1" class="outline-2">
+<h2 id="orgad0e0f1"><span class="section-number-2">5</span> Merge</h2>
+<div class="outline-text-2" id="text-5">
+<p>
+The <code>merge</code> function signature says it takes two treaps, consumes them so they
+are unavailable in any code following the merge and hands back a fresh treap. 
+</p>
+
+<div class="org-src-container">
+<pre class="src src-text">extern fun merge(
+  lower: Option_vt(treap_vt),
+  greater: Option_vt(treap_vt)
+): Option_vt(treap_vt)
+</pre>
+</div>
+
+<p>
+In reality the implementation cannibalizes the input treaps to make the
+resulting one but that's safe since the arguments cannot be used after being passed to
+<code>merge</code>.
+</p>
+
+<p>
+Because it reuses parts of its input arguments <code>merge</code> is the most complex of
+the ATS treap operations but also uses all the features I want to showcase. Once
+<code>merge</code> becomes clear so should to the rest of the operations so here we go:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-text">implement merge(lower,greater) =
+  let
+    var res : Option_vt(treap_vt)
+    fun loop (
+          lower: Option_vt(treap_vt),
+          greater: Option_vt(treap_vt),
+          res: &amp;Option_vt(treap_vt)? &gt;&gt; Option_vt(treap_vt)
+        ) : void =
+        case+ (lower,greater) of
+          | (~None_vt(), ~None_vt()) =&gt; res := None_vt()
+          | (l, ~None_vt()) =&gt; res := l
+          | (~None_vt(), g) =&gt; res := g
+          | (Some_vt(l as treap_vt(_,ly,_,_)), Some_vt(g as treap_vt(_,gy,_,_))) =&gt;
+              if (ly &lt; gy)
+              then
+                case+ l of
+                  | @treap_vt(_,_,_,lr) =&gt;
+                    let
+                      val lr_ = lr
+                    in
+                      begin
+                        res := lower;
+                        loop(lr_,greater,lr);
+                        fold@(l)
+                      end
+                    end
+              else
+                case+ g of
+                  | @treap_vt(_,_,gl,_) =&gt;
+                    let
+                      val gl_ = gl
+                    in
+                      begin
+                        res := greater;
+                        loop(lower,gl_,gl);
+                        fold@(g)
+                      end
+                    end
+    val () = loop(lower,greater,res)
+  in
+    res
+  end
+</pre>
+</div>
+
+<p>
+Stepping back from the implementation details the overall structure of <code>merge</code>
+is:
+</p>
+<pre class="example">
+implement merge(lower,greater) =
+  let
+    var res : Option_vt(treap_vt)
+    fun loop (...) ...
+    val () = loop(lower,greater,res)
+  in
+    res
+  end
+</pre>
+
+<p>
+Inside of the <code>let</code> block is a stack allocated variable <code>res</code> (that's what the
+<code>var</code> keyword means) that will hold the a pointer to merged treap,
+a function <code>loop</code> which will traverse the trees recursively merging them into
+<code>res</code>. <code>loop</code> is then invoked and the resulting pointer is returned outside the
+<code>let</code> block.
+</p>
+
+<p>
+The type of <code>res</code> in <code>loop</code>'s type signature is interesting:
+</p>
+<pre class="example">
+fun loop (
+      lower: Option_vt(treap_vt),
+      greater: Option_vt(treap_vt),
+      res: &amp;Option_vt(treap_vt)? &gt;&gt; Option_vt(treap_vt)
+    ) : void = ...
+</pre>
+
+<p>
+The <code>&amp;</code> and <code>?</code> that bookend <code>Option_vt(...)</code> say that <code>res</code> is a reference and
+possibly uninitialized respectively which is what we expect since we are passing
+a reference to a stack variable and haven't initialized it. Then rest of it, <code>&gt;&gt;
+Option_vt(...)</code> indicates that once the function is done executing that <code>res</code> is
+guaranteed to some initialized and valid treap in memory.
+</p>
+
+<p>
+The body of <code>loop</code> then pattern matches over the arguments. The first three
+conditions say that <code>res</code> set to <code>null</code> when both treaps are <code>null</code> or the
+non-null one if one of them is. Then the function terminates. The final
+condition where the treaps need to be merged is the most complex case so let's
+break it down by only looking at the case where the priority of the left subtree
+is the lesser so the right subtree is merged into the left:
+</p>
+<pre class="example">
+...
+| (Some_vt(l as treap_vt(_,ly,_,_)), Some_vt(g as treap_vt(_,gy,_,_))) =&gt;
+    if (ly &lt; gy)
+    then
+      case+ l of
+        | @treap_vt(_,_,_,lr) =&gt;
+          ...
+    else
+      ...
+</pre>
+
+<p>
+The new bit is the <code>@</code> in front of the pattern match. Called "unfolding" it is
+another pattern matching shortcut which tells ATS to implicitly bring into scope
+proofs that allow us to view the whole datastructure as a set of pointers (or
+more precisely l-values) so we can mutate parts of it. In this case the <code>@</code>
+brings into scope proofs of pointers to <code>treap_vt</code> and the right subtree <code>lr</code>.
+If you have some familiarity with Rust you can think of this a much more
+generalized version of borrowing a resource mutably.
+</p>
+
+<p>
+The subtree <code>lr</code> is then moved into <code>_lr</code> and passed back into the recursive
+call as the lower treap along with <code>lr</code> which is now a reference and waiting to
+be filled in sometime before the recursive call terminates. Finally the
+<code>fold@(l)</code> is special typelevel function which "re-folds" (consumes) the pointer
+proofs so they can no longer be treated as l-values in subsequent code. Again,
+if you have some familarity with Rust it's like the closing curly brace which
+ends the scope into which something is borrowed mutably.
+</p>
+<pre class="example">
+let
+  val lr_ = lr
+in
+  begin
+    res := lower;
+    loop(lr_,greater,lr);
+    fold@(l)
+  end
+end
+</pre>
+
+<p>
+The rest of of the function does the same unfold-fold dance with the right subtree.
+</p>
+
+<p>
+While most of this is sort of documented in ATS book's section on <a href="http://ats-lang.sourceforge.net/DOCUMENT/INT2PROGINATS/HTML/INT2PROGINATS-BOOK-onechunk.html#linear_lists">Linear Lists</a>
+it was quite difficult for me to understand and get right so if you find it
+overwhelming and convoluted you are not alone. On the upside that's the last of
+the concepts required for understanding the rest of the code.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org794f5c0" class="outline-2">
+<h2 id="org794f5c0"><span class="section-number-2">6</span> Split Binary</h2>
+<div class="outline-text-2" id="text-6">
+<p>
+Splitting a treap into two along a value uses the same concepts we say in the <a href="#orgad0e0f1">merge</a>
+operation but instead of taking two treaps and returning one, it takes one treap
+and a value and returns a pair:
+</p>
+<div class="org-src-container">
+<pre class="src src-text">extern fun split_binary(
+  t : Option_vt(treap_vt),
+  i : int
+): (Option_vt(treap_vt), Option_vt(treap_vt))
+
+implement split_binary(t,i) =
+  let
+    fun loop (
+          curr : Option_vt(treap_vt)
+        ): (Option_vt(treap_vt), Option_vt(treap_vt)) =
+        case+ curr of
+          | ~None_vt() =&gt; (None_vt(),None_vt())
+          | Some_vt(t as treap_vt(lx,_,_,_)) =&gt;
+              if (lx &lt; i) then
+                case+ t of
+                  | @treap_vt(_,_,_,lr) =&gt;
+                      let
+                        val _lr = lr
+                        val (l,r) = loop(_lr)
+                      in
+                        begin
+                          lr := l;
+                          fold@(t);
+                          (curr,r)
+                        end
+                      end
+              else
+                case+ t of
+                  | @treap_vt(_,_,ll,_) =&gt;
+                      let
+                        val _ll = ll
+                        val (l,r) = loop(_ll)
+                      in
+                        begin
+                          ll := r;
+                          fold@(t);
+                          (l,curr)
+                        end
+                      end
+  in
+    loop(t)
+  end
+</pre>
+</div>
+
+<p>
+The <code>let</code> body is roughly the same, there is a <code>loop</code> function which traverses
+the tree and going left or right depending on the priority at the node and the  
+subtree is "unfolded", moved and refolded so it can be mutated. If <a href="#orgad0e0f1">merge</a> makes
+sense there's nothing new to <code>split_binary</code>.
+</p>
+</div>
+</div>
+
+
+<div id="outline-container-org255ec44" class="outline-2">
+<h2 id="org255ec44"><span class="section-number-2">7</span> And the rest &#x2026;</h2>
+<div class="outline-text-2" id="text-7">
+<p>
+The rest of the operations just delegate to the two primitives <a href="#orgad0e0f1">merge</a> and <a href="#org794f5c0">split
+binary</a> so I'll just present them without explanation:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-text">extern fun merge3(
+  l : Option_vt(treap_vt),
+  eq : Option_vt(treap_vt),
+  g : Option_vt(treap_vt)
+): Option_vt(treap_vt)
+
+implement merge3(l,eq,g) =
+  merge(merge(l,eq),g)
+
+extern fun split(
+  t: Option_vt(treap_vt),
+  i: int
+): (Option_vt(treap_vt),Option_vt(treap_vt),Option_vt(treap_vt))
+
+implement split(t,i) =
+  let
+    val+ (l,eq_gr) = split_binary(t,i)
+    val+ (eq,gr) = split_binary(eq_gr,i+1)
+  in
+    (l,eq,gr)
+  end
+
+extern fun has_value(
+  t: Option_vt(treap_vt),
+  i: int
+): (Option_vt(treap_vt), bool)
+
+implement has_value(t,i) =
+  let
+    val+(l,eq,g) = split(t,i)
+  in
+    case+ eq of
+      | ~None_vt() =&gt; (merge(l,g),false)
+      | eq =&gt; (merge3(l,eq,g),true)
+  end
+
+extern fun new_treap(
+  i: int
+): Option_vt(treap_vt)
+
+implement new_treap(i) =
+  Some_vt(treap_vt(i,$STDLIB.random(),None_vt(),None_vt()))
+
+extern fun insert(
+  t: Option_vt(treap_vt),
+  i: int
+): Option_vt(treap_vt)
+
+implement insert(t,i) =
+  let
+    val+(l,eq,g) = split(t,i)
+  in
+    case+ eq of
+      | ~None_vt() =&gt; merge3(l,new_treap(i),g)
+      | _ =&gt; merge3(l,eq,g)
+  end
+
+extern fun erase(
+  t : Option_vt(treap_vt),
+  i : int
+) : Option_vt(treap_vt)
+
+implement erase(t,i) =
+  let
+    val+(l,eq,g) = split(t,i)
+  in
+    begin
+      free_treap(eq);
+      merge(l,g)
+    end
+  end
+</pre>
+</div>
+
+<p>
+The <code>main</code> function constructs a starter treap and kicks off a loop inserting
+and deleting from the tree at some arbitrary intervals set forth by the
+<a href="https://github.com/frol/completely-unscientific-benchmarks">benchmarks</a>.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-text">implement main0(argc,argv) =
+  let
+    fun loop(
+      t: Option_vt(treap_vt),
+      i: int,
+      curr: int,
+      res: int
+    ):int =
+      case+ i of
+        | i when i &gt;= 1000000 =&gt;
+          begin
+            free_treap(t);
+            res
+          end
+        | _ =&gt;
+          let
+            val curr = (curr*57+43) mod 10007
+            val i = i+1
+          in
+            case (i mod 3) of
+              | 0 =&gt; loop(insert(t,curr),i,curr,res)
+              | 1 =&gt; loop(erase(t,curr),i,curr,res)
+              | 2 =&gt;
+                let
+                  val+(t,found) = has_value(t,curr)
+                in
+                  if found then loop(t,i,curr,res+1)
+                  else loop(t,i,curr,res)
+                end
+              | _ =&gt; loop(t,i,curr,res)
+          end
+  in
+    println! (loop(None_vt(),1,5,0))
+  end
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<p class="author">Author: Aditya Siram</p>
+<p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
+</div>
+</body>
+</html>
