@@ -36,7 +36,7 @@ if [ ! -f "$PATSHOME/bin/patscc" ]; then
     git clone https://github.com/Hibou57/PostiATS-Utilities.git
   )
 fi
-"$PATSHOME/bin/patscc" -D_GNU_SOURCE -DATS_MEMALLOC_GCBDW -O2 -I${PATSHOME}/contrib -o treap treap.dats -lgc -latslib
+"$PATSHOME/bin/patscc" -O3 -flto -s -D_GNU_SOURCE -DATS_MEMALLOC_GCBDW -O2 -I${PATSHOME}/contrib -o treap treap.dats -lgc -latslib
 rm treap_dats.c
 strip treap
 

@@ -1,121 +1,117 @@
 #include "share/atspre_staload.hats"
 staload STDLIB = "libats/libc/SATS/stdlib.sats"
 
-datavtype treap_vt = treap_vt of (int,lint,Option_vt(treap_vt),Option_vt(treap_vt))
+datavtype treap_vt =
+  | treap_vt_nil
+  | treap_vt_cons of (int,lint,treap_vt,treap_vt)
 
 extern fun free_treap(
-  t : Option_vt(treap_vt)
+  t : treap_vt
 ) : void
 
 implement free_treap(t) =
   case+ t of
-   | ~Some_vt(~treap_vt(_,_,l,r)) => (free_treap(l); free_treap(r); ())
-   | ~None_vt() => ()
+   | ~treap_vt_cons(_,_,l,r) => (free_treap(l); free_treap(r); ())
+   | ~treap_vt_nil() => ()
 
 extern fun merge(
-  lower: Option_vt(treap_vt),
-  greater: Option_vt(treap_vt)
-): Option_vt(treap_vt)
+  lower: treap_vt,
+  greater: treap_vt
+): treap_vt
 
 implement merge(lower,greater) =
   let
-    var res : Option_vt(treap_vt)
+    var res : treap_vt
     fun loop (
-          lower: Option_vt(treap_vt),
-          greater: Option_vt(treap_vt),
-          res: &Option_vt(treap_vt)? >> Option_vt(treap_vt)
+          lower: treap_vt,
+          greater: treap_vt,
+          res: &treap_vt? >> treap_vt
         ) : void =
         case+ (lower,greater) of
-          | (~None_vt(), ~None_vt()) => res := None_vt()
-          | (l, ~None_vt()) => res := l
-          | (~None_vt(), g) => res := g
-          | (Some_vt(l as treap_vt(_,ly,_,_)), Some_vt(g as treap_vt(_,gy,_,_))) =>
+          | (~treap_vt_nil(), ~treap_vt_nil()) => res := treap_vt_nil()
+          | (l, ~treap_vt_nil()) => res := l
+          | (~treap_vt_nil(), g) => res := g
+          | (@treap_vt_cons(_,ly,_,lr), @treap_vt_cons(_,gy,gl,_)) =>
               if (ly < gy)
               then
-                case+ l of
-                  | @treap_vt(_,_,_,lr) =>
-                    let
-                      val lr_ = lr
-                    in
-                      begin
-                        res := lower;
-                        loop(lr_,greater,lr);
-                        fold@(l)
-                      end
-                    end
+                let
+                  val lr_ = lr
+                in
+                  begin
+                    res := lower;
+                    fold@(greater);
+                    loop(lr_,greater,lr);
+                    fold@(res)
+                  end
+                end
               else
-                case+ g of
-                  | @treap_vt(_,_,gl,_) =>
-                    let
-                      val gl_ = gl
-                    in
-                      begin
-                        res := greater;
-                        loop(lower,gl_,gl);
-                        fold@(g)
-                      end
-                    end
+                let
+                  val gl_ = gl
+                in
+                  begin
+                    res := greater;
+                    fold@(lower);
+                    loop(lower,gl_,gl);
+                    fold@(res)
+                  end
+                end
     val () = loop(lower,greater,res)
   in
     res
   end
 
 extern fun split_binary(
-  t : Option_vt(treap_vt),
+  t : treap_vt,
   i : int
-): (Option_vt(treap_vt), Option_vt(treap_vt))
+): (treap_vt, treap_vt)
 
 implement split_binary(t,i) =
   let
     fun loop (
-          curr : Option_vt(treap_vt)
-        ): (Option_vt(treap_vt), Option_vt(treap_vt)) =
+          curr : treap_vt
+        ): (treap_vt, treap_vt) =
         case+ curr of
-          | ~None_vt() => (None_vt(),None_vt())
-          | Some_vt(t as treap_vt(lx,_,_,_)) =>
+          | ~treap_vt_nil() => (treap_vt_nil(),treap_vt_nil())
+          | @treap_vt_cons(lx,_,ll,lr) =>
               if (lx < i) then
-                case+ t of
-                  | @treap_vt(_,_,_,lr) =>
-                      let
-                        val _lr = lr
-                        val (l,r) = loop(_lr)
-                      in
-                        begin
-                          lr := l;
-                          fold@(t);
-                          (curr,r)
-                        end
-                      end
+                let
+                  val _lr = lr
+                  val (l,r) = loop(_lr)
+                in
+                  begin
+                    lr := l;
+                    fold@(curr);
+                    (curr,r)
+                  end
+                end
               else
-                case+ t of
-                  | @treap_vt(_,_,ll,_) =>
-                      let
-                        val _ll = ll
-                        val (l,r) = loop(_ll)
-                      in
-                        begin
-                          ll := r;
-                          fold@(t);
-                          (l,curr)
-                        end
-                      end
+                let
+                  val _ll = ll
+                  val (l,r) = loop(_ll)
+                in
+                  begin
+                    ll := r;
+                    fold@(curr);
+                    (l,curr)
+                  end
+                end
   in
     loop(t)
   end
 
 extern fun merge3(
-  l : Option_vt(treap_vt),
-  eq : Option_vt(treap_vt),
-  g : Option_vt(treap_vt)
-): Option_vt(treap_vt)
+  l : treap_vt,
+  eq : treap_vt,
+  g : treap_vt
+): treap_vt
 
 implement merge3(l,eq,g) =
   merge(merge(l,eq),g)
 
 extern fun split(
-  t: Option_vt(treap_vt),
+  t: treap_vt,
   i: int
-): (Option_vt(treap_vt),Option_vt(treap_vt),Option_vt(treap_vt))
+): (treap_vt,treap_vt,treap_vt)
 
 implement split(t,i) =
   let
@@ -126,44 +122,44 @@ implement split(t,i) =
   end
 
 extern fun has_value(
-  t: Option_vt(treap_vt),
+  t: treap_vt,
   i: int
-): (Option_vt(treap_vt), bool)
+): (treap_vt, bool)
 
 implement has_value(t,i) =
   let
     val+(l,eq,g) = split(t,i)
   in
     case+ eq of
-      | ~None_vt() => (merge(l,g),false)
+      | ~treap_vt_nil() => (merge(l,g),false)
       | eq => (merge3(l,eq,g),true)
   end
 
 extern fun new_treap(
   i: int
-): Option_vt(treap_vt)
+): treap_vt
 
 implement new_treap(i) =
-  Some_vt(treap_vt(i,$STDLIB.random(),None_vt(),None_vt()))
+  treap_vt_cons(i,$STDLIB.random(),treap_vt_nil(),treap_vt_nil())
 
 extern fun insert(
-  t: Option_vt(treap_vt),
+  t: treap_vt,
   i: int
-): Option_vt(treap_vt)
+): treap_vt
 
 implement insert(t,i) =
   let
     val+(l,eq,g) = split(t,i)
   in
     case+ eq of
-      | ~None_vt() => merge3(l,new_treap(i),g)
+      | ~treap_vt_nil() => merge3(l,new_treap(i),g)
       | _ => merge3(l,eq,g)
   end
 
 extern fun erase(
-  t : Option_vt(treap_vt),
+  t : treap_vt,
   i : int
-) : Option_vt(treap_vt)
+) : treap_vt
 
 implement erase(t,i) =
   let
@@ -178,7 +174,7 @@ implement erase(t,i) =
 implement main0(argc,argv) =
   let
     fun loop(
-      t: Option_vt(treap_vt),
+      t: treap_vt,
       i: int,
       curr: int,
       res: int
@@ -207,5 +203,5 @@ implement main0(argc,argv) =
               | _ => loop(t,i,curr,res)
           end
   in
-    println! (loop(None_vt(),1,5,0))
+    println! (loop(treap_vt_nil(),1,5,0))
   end

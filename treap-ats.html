@@ -233,19 +233,19 @@ for the JavaScript code in this tag.
 <h2>Table of Contents</h2>
 <div id="text-table-of-contents">
 <ul>
-<li><a href="#org4f69842">1. Overview</a></li>
-<li><a href="#orgac573f3">2. Imports</a></li>
-<li><a href="#org2f066ba">3. The Treap Datastructure</a></li>
-<li><a href="#orgffd678c">4. Freeing the treap</a></li>
-<li><a href="#orgad0e0f1">5. Merge</a></li>
-<li><a href="#org794f5c0">6. Split Binary</a></li>
-<li><a href="#org255ec44">7. And the rest &#x2026;</a></li>
+<li><a href="#org1c16df5">1. Overview</a></li>
+<li><a href="#orgb88b5b3">2. Imports</a></li>
+<li><a href="#org0ea9b19">3. The Treap Datastructure</a></li>
+<li><a href="#orge71baeb">4. Freeing the treap</a></li>
+<li><a href="#org902455f">5. Merge</a></li>
+<li><a href="#org9e7841a">6. Split Binary</a></li>
+<li><a href="#org9d0068f">7. And the rest &#x2026;</a></li>
 </ul>
 </div>
 </div>
 
-<div id="outline-container-org4f69842" class="outline-2">
-<h2 id="org4f69842"><span class="section-number-2">1</span> Overview</h2>
+<div id="outline-container-org1c16df5" class="outline-2">
+<h2 id="org1c16df5"><span class="section-number-2">1</span> Overview</h2>
 <div class="outline-text-2" id="text-1">
 <p>
 Below is the <a href="http://ats-lang.org">ATS</a> entry to the <a href="https://github.com/frol/completely-unscientific-benchmarks">Completely Unscientific Benchmarks</a> challenge which
@@ -260,8 +260,8 @@ a guide. I also assume some familiarity with ML-like languages.
 </div>
 </div>
 
-<div id="outline-container-orgac573f3" class="outline-2">
-<h2 id="orgac573f3"><span class="section-number-2">2</span> Imports</h2>
+<div id="outline-container-orgb88b5b3" class="outline-2">
+<h2 id="orgb88b5b3"><span class="section-number-2">2</span> Imports</h2>
 <div class="outline-text-2" id="text-2">
 <p>
 First we need a couple of imports, the first one is standard and the second is
@@ -275,62 +275,60 @@ staload STDLIB = "libats/libc/SATS/stdlib.sats"
 </div>
 </div>
 
-<div id="outline-container-org2f066ba" class="outline-2">
-<h2 id="org2f066ba"><span class="section-number-2">3</span> The Treap Datastructure</h2>
+<div id="outline-container-org0ea9b19" class="outline-2">
+<h2 id="org0ea9b19"><span class="section-number-2">3</span> The Treap Datastructure</h2>
 <div class="outline-text-2" id="text-3">
 <p>
 The treap datastructure can be encoded in a ML-like datatype:
 </p>
 <div class="org-src-container">
-<pre class="src src-text">datavtype treap_vt = treap_vt of (int,lint,Option_vt(treap_vt),Option_vt(treap_vt))
+<pre class="src src-text">datavtype treap_vt =
+  | treap_vt_nil
+  | treap_vt_cons of (int,lint,treap_vt,treap_vt)
 </pre>
 </div>
 
 <p>
-It consists of a type constructor <code>treap_vt</code> which is parameterized on some
-<code>int</code> payload, that node's <code>lint</code> (long int) priority in the tree and the left
-and right subtrees. The keyword <code>datavtype</code> (instead of <code>datatype</code>) means that
-the treap is a linear resource allocated on the heap. The ATS type system then
-tracks it to make sure it is accessed safely and properly freed. Calling it
-<code>treap_vt</code> is a naming convention that makes it easier to see that in code. The
-<code>Option_vt(treap_vt)</code> in the definitions of the left and right subtree indicate
-that the subtree can be <code>None_vt()</code>, a null pointer, or <code>Some_vt(treap_vt(...))</code>
-a pointer to some location on the heap that contains the subtree. As you may
-have guessed <code>Option_vt(...)</code> imported from the ATS prelude is a combination of
-the usual <code>Option</code> type from ML languages, some memory location and a linear
-variable to mediate access.
+It consists of two type constructors, <code>treap_vt_nil</code> which compiles to a null
+pointer and represents the end of the tree or <code>treap_vt_cons</code> which is
+parameterized on an <code>int</code> payload, that node's <code>lint</code> (long int) priority in the
+tree and the left and right subtrees. The keyword <code>datavtype</code> (instead of
+<code>datatype</code>) means that the treap is a linear resource allocated on the heap. The
+ATS type system then tracks it to make sure it is accessed safely and properly
+freed. Calling it <code>treap_vt</code> is a naming convention that makes it easier to see
+that in code.
 </p>
 </div>
 </div>
 
-<div id="outline-container-orgffd678c" class="outline-2">
-<h2 id="orgffd678c"><span class="section-number-2">4</span> Freeing the treap</h2>
+<div id="outline-container-orge71baeb" class="outline-2">
+<h2 id="orge71baeb"><span class="section-number-2">4</span> Freeing the treap</h2>
 <div class="outline-text-2" id="text-4">
 <p>
 First we need a utility function to free the treap when we are done with it:
 </p>
 <div class="org-src-container">
 <pre class="src src-text">extern fun free_treap(
-  t : Option_vt(treap_vt)
+  t : treap_vt
 ) : void
 
 implement free_treap(t) =
   case+ t of
-   | ~Some_vt(~treap_vt(_,_,l,r)) =&gt; (free_treap(l); free_treap(r); ())
-   | ~None_vt() =&gt; ()
+   | ~treap_vt_cons(_,_,l,r) =&gt; (free_treap(l); free_treap(r); ())
+   | ~treap_vt_nil() =&gt; ()
 </pre>
 </div>
 
 <p>
-It starts with a function definition and a type signature saying that it takes
-possibly null pointer to a treap and has no output.
+The function definition and a type signature say that it takes a treap, consumes
+the associated linear variable meaning it is no longer available and has no output.
 </p>
 
 <p>
 The implementation shows a fun feature of ATS' pattern matching, the squiggle
 '~' in front of the pattern tells ATS to automatically free the resource and
 consume the associated linear variable when it matches the pattern. When the
-treap contains some data it will match the '~Some_vt(~treap_vt(&#x2026;))' which frees the
+treap contains some data it will match the '~treap_vt_cons(&#x2026;)' which frees the
 pointer to the treap and the treap's non-pointer data. Then all that remains is to
 recursively free the subtrees. With the linear variable consumed the treap
 can no longer be used in any subsequent code.
@@ -338,19 +336,19 @@ can no longer be used in any subsequent code.
 </div>
 </div>
 
-<div id="outline-container-orgad0e0f1" class="outline-2">
-<h2 id="orgad0e0f1"><span class="section-number-2">5</span> Merge</h2>
+<div id="outline-container-org902455f" class="outline-2">
+<h2 id="org902455f"><span class="section-number-2">5</span> Merge</h2>
 <div class="outline-text-2" id="text-5">
 <p>
 The <code>merge</code> function signature says it takes two treaps, consumes them so they
-are unavailable in any code following the merge and hands back a fresh treap. 
+are unavailable in any code following the merge and hands back a fresh treap.
 </p>
 
 <div class="org-src-container">
 <pre class="src src-text">extern fun merge(
-  lower: Option_vt(treap_vt),
-  greater: Option_vt(treap_vt)
-): Option_vt(treap_vt)
+  lower: treap_vt,
+  greater: treap_vt
+): treap_vt
 </pre>
 </div>
 
@@ -369,42 +367,40 @@ the ATS treap operations but also uses all the features I want to showcase. Once
 <div class="org-src-container">
 <pre class="src src-text">implement merge(lower,greater) =
   let
-    var res : Option_vt(treap_vt)
+    var res : treap_vt
     fun loop (
-          lower: Option_vt(treap_vt),
-          greater: Option_vt(treap_vt),
-          res: &amp;Option_vt(treap_vt)? &gt;&gt; Option_vt(treap_vt)
+          lower: treap_vt,
+          greater: treap_vt,
+          res: &amp;treap_vt? &gt;&gt; treap_vt
         ) : void =
         case+ (lower,greater) of
-          | (~None_vt(), ~None_vt()) =&gt; res := None_vt()
-          | (l, ~None_vt()) =&gt; res := l
-          | (~None_vt(), g) =&gt; res := g
-          | (Some_vt(l as treap_vt(_,ly,_,_)), Some_vt(g as treap_vt(_,gy,_,_))) =&gt;
+          | (~treap_vt_nil(), ~treap_vt_nil()) =&gt; res := treap_vt_nil()
+          | (l, ~treap_vt_nil()) =&gt; res := l
+          | (~treap_vt_nil(), g) =&gt; res := g
+          | (@treap_vt_cons(_,ly,_,lr), @treap_vt_cons(_,gy,gl,_)) =&gt;
               if (ly &lt; gy)
               then
-                case+ l of
-                  | @treap_vt(_,_,_,lr) =&gt;
-                    let
-                      val lr_ = lr
-                    in
-                      begin
-                        res := lower;
-                        loop(lr_,greater,lr);
-                        fold@(l)
-                      end
-                    end
+                let
+                  val lr_ = lr
+                in
+                  begin
+                    res := lower;
+                    fold@(greater);
+                    loop(lr_,greater,lr);
+                    fold@(res)
+                  end
+                end
               else
-                case+ g of
-                  | @treap_vt(_,_,gl,_) =&gt;
-                    let
-                      val gl_ = gl
-                    in
-                      begin
-                        res := greater;
-                        loop(lower,gl_,gl);
-                        fold@(g)
-                      end
-                    end
+                let
+                  val gl_ = gl
+                in
+                  begin
+                    res := greater;
+                    fold@(lower);
+                    loop(lower,gl_,gl);
+                    fold@(res)
+                  end
+                end
     val () = loop(lower,greater,res)
   in
     res
@@ -419,7 +415,7 @@ is:
 <pre class="example">
 implement merge(lower,greater) =
   let
-    var res : Option_vt(treap_vt)
+    var res : treap_vt
     fun loop (...) ...
     val () = loop(lower,greater,res)
   in
@@ -440,17 +436,17 @@ The type of <code>res</code> in <code>loop</code>'s type signature is interestin
 </p>
 <pre class="example">
 fun loop (
-      lower: Option_vt(treap_vt),
-      greater: Option_vt(treap_vt),
-      res: &amp;Option_vt(treap_vt)? &gt;&gt; Option_vt(treap_vt)
-    ) : void = ...
+      lower: treap_vt,
+      greater: treap_vt,
+      res: &amp;treap_vt? &gt;&gt; treap_vt
+    ) : void =
 </pre>
 
 <p>
-The <code>&amp;</code> and <code>?</code> that bookend <code>Option_vt(...)</code> say that <code>res</code> is a reference and
+The <code>&amp;</code> and <code>?</code> that bookend <code>treap_vt</code> say that <code>res</code> is a reference and
 possibly uninitialized respectively which is what we expect since we are passing
 a reference to a stack variable and haven't initialized it. Then rest of it, <code>&gt;&gt;
-Option_vt(...)</code> indicates that once the function is done executing that <code>res</code> is
+treap_vt</code> indicates that once the function is done executing that <code>res</code> is
 guaranteed to some initialized and valid treap in memory.
 </p>
 
@@ -464,14 +460,11 @@ is the lesser so the right subtree is merged into the left:
 </p>
 <pre class="example">
 ...
-| (Some_vt(l as treap_vt(_,ly,_,_)), Some_vt(g as treap_vt(_,gy,_,_))) =&gt;
+| (@treap_vt_cons(_,ly,_,lr), @treap_vt_cons(_,gy,gl,_)) =&gt;
     if (ly &lt; gy)
     then
-      case+ l of
-        | @treap_vt(_,_,_,lr) =&gt;
-          ...
-    else
       ...
+    else
 </pre>
 
 <p>
@@ -479,19 +472,14 @@ The new bit is the <code>@</code> in front of the pattern match. Called "unfoldi
 another pattern matching shortcut which tells ATS to implicitly bring into scope
 proofs that allow us to view the whole datastructure as a set of pointers (or
 more precisely l-values) so we can mutate parts of it. In this case the <code>@</code>
-brings into scope proofs of pointers to <code>treap_vt</code> and the right subtree <code>lr</code>.
-If you have some familiarity with Rust you can think of this a much more
-generalized version of borrowing a resource mutably.
+brings into scope proofs of pointers to the priority and right subtree of the
+lower treap and the priority and left subtree of the greater treap. If you have
+some familiarity with Rust you can think of this a much more generalized version
+of borrowing a resource mutably.
 </p>
 
 <p>
-The subtree <code>lr</code> is then moved into <code>_lr</code> and passed back into the recursive
-call as the lower treap along with <code>lr</code> which is now a reference and waiting to
-be filled in sometime before the recursive call terminates. Finally the
-<code>fold@(l)</code> is special typelevel function which "re-folds" (consumes) the pointer
-proofs so they can no longer be treated as l-values in subsequent code. Again,
-if you have some familarity with Rust it's like the closing curly brace which
-ends the scope into which something is borrowed mutably.
+In the body of the branch:
 </p>
 <pre class="example">
 let
@@ -499,11 +487,29 @@ let
 in
   begin
     res := lower;
+    fold@(greater);
     loop(lr_,greater,lr);
-    fold@(l)
+    fold@(res)
   end
 end
 </pre>
+
+<p>
+the subtree <code>lr</code> is then moved into <code>lr_</code> which is passed back into the
+recursive call as the lower treap along with <code>lr</code> which is now a reference and
+waiting to be filled in sometime before the recursive call terminates. The stack
+variable <code>res</code> now points to the entire <code>lower</code> subtree since in this branch the
+greater is merged into the lower. <code>fold@(greater)</code> is special typelevel function
+which "re-folds" (consumes) the pointer proofs so they can no longer be treated
+as l-values in subsequent code. The recursive call is made after which <code>res</code>
+which points to an "unfolded" <code>lower</code> treap also needs "refolding". If you have
+some familarity with Rust it's like the closing curly brace which ends the scope
+into which something is borrowed mutably. Another odd thing is in this branch we
+have "unfolded" <code>greater</code> in the pattern match and re-folded it in the branch
+without using it at all. This is purely for convenience sake, the function could
+have been structured to avoid but there is no runtime cost since folding and
+unfolding are erased after typechecking.
+</p>
 
 <p>
 The rest of of the function does the same unfold-fold dance with the right subtree.
@@ -518,54 +524,50 @@ the concepts required for understanding the rest of the code.
 </div>
 </div>
 
-<div id="outline-container-org794f5c0" class="outline-2">
-<h2 id="org794f5c0"><span class="section-number-2">6</span> Split Binary</h2>
+<div id="outline-container-org9e7841a" class="outline-2">
+<h2 id="org9e7841a"><span class="section-number-2">6</span> Split Binary</h2>
 <div class="outline-text-2" id="text-6">
 <p>
-Splitting a treap into two along a value uses the same concepts we say in the <a href="#orgad0e0f1">merge</a>
+Splitting a treap into two along a value uses the same concepts we say in the <a href="#org902455f">merge</a>
 operation but instead of taking two treaps and returning one, it takes one treap
 and a value and returns a pair:
 </p>
 <div class="org-src-container">
 <pre class="src src-text">extern fun split_binary(
-  t : Option_vt(treap_vt),
+  t : treap_vt,
   i : int
-): (Option_vt(treap_vt), Option_vt(treap_vt))
+): (treap_vt, treap_vt)
 
 implement split_binary(t,i) =
   let
     fun loop (
-          curr : Option_vt(treap_vt)
-        ): (Option_vt(treap_vt), Option_vt(treap_vt)) =
+          curr : treap_vt
+        ): (treap_vt, treap_vt) =
         case+ curr of
-          | ~None_vt() =&gt; (None_vt(),None_vt())
-          | Some_vt(t as treap_vt(lx,_,_,_)) =&gt;
+          | ~treap_vt_nil() =&gt; (treap_vt_nil(),treap_vt_nil())
+          | @treap_vt_cons(lx,_,ll,lr) =&gt;
               if (lx &lt; i) then
-                case+ t of
-                  | @treap_vt(_,_,_,lr) =&gt;
-                      let
-                        val _lr = lr
-                        val (l,r) = loop(_lr)
-                      in
-                        begin
-                          lr := l;
-                          fold@(t);
-                          (curr,r)
-                        end
-                      end
+                let
+                  val _lr = lr
+                  val (l,r) = loop(_lr)
+                in
+                  begin
+                    lr := l;
+                    fold@(curr);
+                    (curr,r)
+                  end
+                end
               else
-                case+ t of
-                  | @treap_vt(_,_,ll,_) =&gt;
-                      let
-                        val _ll = ll
-                        val (l,r) = loop(_ll)
-                      in
-                        begin
-                          ll := r;
-                          fold@(t);
-                          (l,curr)
-                        end
-                      end
+                let
+                  val _ll = ll
+                  val (l,r) = loop(_ll)
+                in
+                  begin
+                    ll := r;
+                    fold@(curr);
+                    (l,curr)
+                  end
+                end
   in
     loop(t)
   end
@@ -574,36 +576,36 @@ implement split_binary(t,i) =
 
 <p>
 The <code>let</code> body is roughly the same, there is a <code>loop</code> function which traverses
-the tree and going left or right depending on the priority at the node and the  
-subtree is "unfolded", moved and refolded so it can be mutated. If <a href="#orgad0e0f1">merge</a> makes
+the tree and going left or right depending on the priority at the node and the
+subtree is "unfolded", moved and refolded so it can be mutated. If <a href="#org902455f">merge</a> makes
 sense there's nothing new to <code>split_binary</code>.
 </p>
 </div>
 </div>
 
 
-<div id="outline-container-org255ec44" class="outline-2">
-<h2 id="org255ec44"><span class="section-number-2">7</span> And the rest &#x2026;</h2>
+<div id="outline-container-org9d0068f" class="outline-2">
+<h2 id="org9d0068f"><span class="section-number-2">7</span> And the rest &#x2026;</h2>
 <div class="outline-text-2" id="text-7">
 <p>
-The rest of the operations just delegate to the two primitives <a href="#orgad0e0f1">merge</a> and <a href="#org794f5c0">split
+The rest of the operations just delegate to the two primitives <a href="#org902455f">merge</a> and <a href="#org9e7841a">split
 binary</a> so I'll just present them without explanation:
 </p>
 
 <div class="org-src-container">
 <pre class="src src-text">extern fun merge3(
-  l : Option_vt(treap_vt),
-  eq : Option_vt(treap_vt),
-  g : Option_vt(treap_vt)
-): Option_vt(treap_vt)
+  l : treap_vt,
+  eq : treap_vt,
+  g : treap_vt
+): treap_vt
 
 implement merge3(l,eq,g) =
   merge(merge(l,eq),g)
 
 extern fun split(
-  t: Option_vt(treap_vt),
+  t: treap_vt,
   i: int
-): (Option_vt(treap_vt),Option_vt(treap_vt),Option_vt(treap_vt))
+): (treap_vt,treap_vt,treap_vt)
 
 implement split(t,i) =
   let
@@ -614,44 +616,44 @@ implement split(t,i) =
   end
 
 extern fun has_value(
-  t: Option_vt(treap_vt),
+  t: treap_vt,
   i: int
-): (Option_vt(treap_vt), bool)
+): (treap_vt, bool)
 
 implement has_value(t,i) =
   let
     val+(l,eq,g) = split(t,i)
   in
     case+ eq of
-      | ~None_vt() =&gt; (merge(l,g),false)
+      | ~treap_vt_nil() =&gt; (merge(l,g),false)
       | eq =&gt; (merge3(l,eq,g),true)
   end
 
 extern fun new_treap(
   i: int
-): Option_vt(treap_vt)
+): treap_vt
 
 implement new_treap(i) =
-  Some_vt(treap_vt(i,$STDLIB.random(),None_vt(),None_vt()))
+  treap_vt_cons(i,$STDLIB.random(),treap_vt_nil(),treap_vt_nil())
 
 extern fun insert(
-  t: Option_vt(treap_vt),
+  t: treap_vt,
   i: int
-): Option_vt(treap_vt)
+): treap_vt
 
 implement insert(t,i) =
   let
     val+(l,eq,g) = split(t,i)
   in
     case+ eq of
-      | ~None_vt() =&gt; merge3(l,new_treap(i),g)
+      | ~treap_vt_nil() =&gt; merge3(l,new_treap(i),g)
       | _ =&gt; merge3(l,eq,g)
   end
 
 extern fun erase(
-  t : Option_vt(treap_vt),
+  t : treap_vt,
   i : int
-) : Option_vt(treap_vt)
+) : treap_vt
 
 implement erase(t,i) =
   let
@@ -675,7 +677,7 @@ and deleting from the tree at some arbitrary intervals set forth by the
 <pre class="src src-text">implement main0(argc,argv) =
   let
     fun loop(
-      t: Option_vt(treap_vt),
+      t: treap_vt,
       i: int,
       curr: int,
       res: int
@@ -704,7 +706,7 @@ and deleting from the tree at some arbitrary intervals set forth by the
               | _ =&gt; loop(t,i,curr,res)
           end
   in
-    println! (loop(None_vt(),1,5,0))
+    println! (loop(treap_vt_nil(),1,5,0))
   end
 </pre>
 </div>
