@@ -233,19 +233,27 @@ for the JavaScript code in this tag.
 <h2>Table of Contents</h2>
 <div id="text-table-of-contents">
 <ul>
-<li><a href="#org1c16df5">1. Overview</a></li>
-<li><a href="#orgb88b5b3">2. Imports</a></li>
-<li><a href="#org0ea9b19">3. The Treap Datastructure</a></li>
-<li><a href="#orge71baeb">4. Freeing the treap</a></li>
-<li><a href="#org902455f">5. Merge</a></li>
-<li><a href="#org9e7841a">6. Split Binary</a></li>
-<li><a href="#org9d0068f">7. And the rest &#x2026;</a></li>
+<li><a href="#org09d0fdc">1. Overview</a></li>
+<li><a href="#org78f942f">2. Imports</a></li>
+<li><a href="#orgf5d4a40">3. The Treap Datastructure</a>
+<ul>
+<li><a href="#orgfd6a895">3.1. Slower Treap Datastructure</a></li>
+</ul>
+</li>
+<li><a href="#org9f794b8">4. Freeing the treap</a></li>
+<li><a href="#orgcde3bae">5. Merge</a></li>
+<li><a href="#orgd85260a">6. Split Binary</a>
+<ul>
+<li><a href="#orgaaeada0">6.1. Slower Split Binary</a></li>
+</ul>
+</li>
+<li><a href="#orga5e88d7">7. And the rest &#x2026;</a></li>
 </ul>
 </div>
 </div>
 
-<div id="outline-container-org1c16df5" class="outline-2">
-<h2 id="org1c16df5"><span class="section-number-2">1</span> Overview</h2>
+<div id="outline-container-org09d0fdc" class="outline-2">
+<h2 id="org09d0fdc"><span class="section-number-2">1</span> Overview</h2>
 <div class="outline-text-2" id="text-1">
 <p>
 Below is the <a href="http://ats-lang.org">ATS</a> entry to the <a href="https://github.com/frol/completely-unscientific-benchmarks">Completely Unscientific Benchmarks</a> challenge which
@@ -260,8 +268,8 @@ a guide. I also assume some familiarity with ML-like languages.
 </div>
 </div>
 
-<div id="outline-container-orgb88b5b3" class="outline-2">
-<h2 id="orgb88b5b3"><span class="section-number-2">2</span> Imports</h2>
+<div id="outline-container-org78f942f" class="outline-2">
+<h2 id="org78f942f"><span class="section-number-2">2</span> Imports</h2>
 <div class="outline-text-2" id="text-2">
 <p>
 First we need a couple of imports, the first one is standard and the second is
@@ -275,8 +283,8 @@ staload STDLIB = "libats/libc/SATS/stdlib.sats"
 </div>
 </div>
 
-<div id="outline-container-org0ea9b19" class="outline-2">
-<h2 id="org0ea9b19"><span class="section-number-2">3</span> The Treap Datastructure</h2>
+<div id="outline-container-orgf5d4a40" class="outline-2">
+<h2 id="orgf5d4a40"><span class="section-number-2">3</span> The Treap Datastructure</h2>
 <div class="outline-text-2" id="text-3">
 <p>
 The treap datastructure can be encoded in a ML-like datatype:
@@ -299,10 +307,29 @@ freed. Calling it <code>treap_vt</code> is a naming convention that makes it eas
 that in code.
 </p>
 </div>
+<div id="outline-container-orgfd6a895" class="outline-3">
+<h3 id="orgfd6a895"><span class="section-number-3">3.1</span> Slower Treap Datastructure</h3>
+<div class="outline-text-3" id="text-3-1">
+<p>
+An older version of this implementation used the following definition for the
+datastructure:
+</p>
+<pre class="example">
+datavtype treap_vt = treap_vt of (int,lint,Option_vt(treap_vt),Option_vt(treap_vt))
+</pre>
+<p>
+The difference is that instead of having an explicit 'nil' constructor the
+datatype boxes the subtrees in an <code>Option_vt</code> which is viewtype on the familiar
+ML <code>Option</code>. The above is better from a code reuse standpoint but as Hongwei Xi,
+the author of ATS pointed out, this extra layer of indirection added an almost
+20% performance penalty.
+</p>
+</div>
+</div>
 </div>
 
-<div id="outline-container-orge71baeb" class="outline-2">
-<h2 id="orge71baeb"><span class="section-number-2">4</span> Freeing the treap</h2>
+<div id="outline-container-org9f794b8" class="outline-2">
+<h2 id="org9f794b8"><span class="section-number-2">4</span> Freeing the treap</h2>
 <div class="outline-text-2" id="text-4">
 <p>
 First we need a utility function to free the treap when we are done with it:
@@ -336,8 +363,8 @@ can no longer be used in any subsequent code.
 </div>
 </div>
 
-<div id="outline-container-org902455f" class="outline-2">
-<h2 id="org902455f"><span class="section-number-2">5</span> Merge</h2>
+<div id="outline-container-orgcde3bae" class="outline-2">
+<h2 id="orgcde3bae"><span class="section-number-2">5</span> Merge</h2>
 <div class="outline-text-2" id="text-5">
 <p>
 The <code>merge</code> function signature says it takes two treaps, consumes them so they
@@ -524,11 +551,11 @@ the concepts required for understanding the rest of the code.
 </div>
 </div>
 
-<div id="outline-container-org9e7841a" class="outline-2">
-<h2 id="org9e7841a"><span class="section-number-2">6</span> Split Binary</h2>
+<div id="outline-container-orgd85260a" class="outline-2">
+<h2 id="orgd85260a"><span class="section-number-2">6</span> Split Binary</h2>
 <div class="outline-text-2" id="text-6">
 <p>
-Splitting a treap into two along a value uses the same concepts we say in the <a href="#org902455f">merge</a>
+Splitting a treap into two along a value uses the same concepts we say in the <a href="#orgcde3bae">merge</a>
 operation but instead of taking two treaps and returning one, it takes one treap
 and a value and returns a pair:
 </p>
@@ -538,6 +565,66 @@ and a value and returns a pair:
   i : int
 ): (treap_vt, treap_vt)
 
+implement
+split_binary(t,i) =
+  let
+    var tl_res: treap_vt
+    var tr_res: treap_vt
+    fun loop (
+      t : treap_vt,
+      i : int,
+      tl_res: &amp;treap_vt? &gt;&gt; treap_vt,
+      tr_res: &amp;treap_vt? &gt;&gt; treap_vt
+    ) : void =
+        case+ t of
+        | ~treap_vt_nil() =&gt;
+           ( tl_res := treap_vt_nil()
+           ; tr_res := treap_vt_nil() )
+        | @treap_vt_cons (tx, ty, tl, tr) =&gt;
+          if (tx &lt; i) then
+            let
+              val tr_ = tr
+            in
+              tl_res := t;
+              loop(tr_, i, tr, tr_res);
+              fold@(tl_res)
+            end
+          else
+            let
+              val tl_ = tl
+            in
+              tr_res := t;
+              loop(tl_, i, tl_res, tl);
+              fold@(tr_res)
+            end
+  in
+    loop(t, i, tl_res, tr_res);
+    (tl_res, tr_res)
+  end
+</pre>
+</div>
+
+<p>
+The <code>let</code> body is roughly the same, there is a <code>loop</code> function which traverses
+the tree and going left or right depending on the priority at the node and the
+subtree is "unfolded", moved and refolded so it can be mutated. Unlike <a href="#orgcde3bae">merge</a>
+instead of a single stack variable here we have two, <code>tl_res</code> and <code>tr_res</code> to
+build the left and right treap. Other than that if <a href="#orgcde3bae">merge</a> makes sense there's
+nothing new to <code>split_binary</code>.
+</p>
+</div>
+
+<div id="outline-container-orgaaeada0" class="outline-3">
+<h3 id="orgaaeada0"><span class="section-number-3">6.1</span> Slower Split Binary</h3>
+<div class="outline-text-3" id="text-6-1">
+<p>
+As an aside the version above is roughly 20% faster than the one I had originally. The slower
+version does not use any stack variables and passes back C structs on each
+recursive call. The version above written by <a href="https://groups.google.com/d/msg/ats-lang-users/EaTmKO661yA/P6leqrb1CgAJ">Hongwei Xi</a> brings this
+implementation of treap up to the exact same performance of the fastest <a href="https://github.com/frol/completely-unscientific-benchmarks#linux-arch-linux-x64-intel-core-i7-4710hq-cpu-1">C++
+version</a>.
+</p>
+<pre class="example">
 implement split_binary(t,i) =
   let
     fun loop (
@@ -573,22 +660,14 @@ implement split_binary(t,i) =
   end
 </pre>
 </div>
-
-<p>
-The <code>let</code> body is roughly the same, there is a <code>loop</code> function which traverses
-the tree and going left or right depending on the priority at the node and the
-subtree is "unfolded", moved and refolded so it can be mutated. If <a href="#org902455f">merge</a> makes
-sense there's nothing new to <code>split_binary</code>.
-</p>
 </div>
 </div>
 
-
-<div id="outline-container-org9d0068f" class="outline-2">
-<h2 id="org9d0068f"><span class="section-number-2">7</span> And the rest &#x2026;</h2>
+<div id="outline-container-orga5e88d7" class="outline-2">
+<h2 id="orga5e88d7"><span class="section-number-2">7</span> And the rest &#x2026;</h2>
 <div class="outline-text-2" id="text-7">
 <p>
-The rest of the operations just delegate to the two primitives <a href="#org902455f">merge</a> and <a href="#org9e7841a">split
+The rest of the operations just delegate to the two primitives <a href="#orgcde3bae">merge</a> and <a href="#orgd85260a">split
 binary</a> so I'll just present them without explanation:
 </p>
 

@@ -38,6 +38,17 @@ tree and the left and right subtrees. The keyword ~datavtype~ (instead of
 ATS type system then tracks it to make sure it is accessed safely and properly
 freed. Calling it ~treap_vt~ is a naming convention that makes it easier to see
 that in code.
+** Slower Treap Datastructure
+An older version of this implementation used the following definition for the
+datastructure:
+#+BEGIN_EXAMPLE
+datavtype treap_vt = treap_vt of (int,lint,Option_vt(treap_vt),Option_vt(treap_vt))
+#+END_EXAMPLE
+The difference is that instead of having an explicit 'nil' constructor the
+datatype boxes the subtrees in an ~Option_vt~ which is viewtype on the familiar
+ML ~Option~. The above is better from a code reuse standpoint but as Hongwei Xi,
+the author of ATS pointed out, this extra layer of indirection added an almost
+20% performance penalty.
 
 * Freeing the treap
 First we need a utility function to free the treap when we are done with it:
@@ -229,6 +240,58 @@ extern fun split_binary(
   i : int
 ): (treap_vt, treap_vt)
 
+implement
+split_binary(t,i) =
+  let
+    var tl_res: treap_vt
+    var tr_res: treap_vt
+    fun loop (
+      t : treap_vt,
+      i : int,
+      tl_res: &treap_vt? >> treap_vt,
+      tr_res: &treap_vt? >> treap_vt
+    ) : void =
+        case+ t of
+        | ~treap_vt_nil() =>
+           ( tl_res := treap_vt_nil()
+           ; tr_res := treap_vt_nil() )
+        | @treap_vt_cons (tx, ty, tl, tr) =>
+          if (tx < i) then
+            let
+              val tr_ = tr
+            in
+              tl_res := t;
+              loop(tr_, i, tr, tr_res);
+              fold@(tl_res)
+            end
+          else
+            let
+              val tl_ = tl
+            in
+              tr_res := t;
+              loop(tl_, i, tl_res, tl);
+              fold@(tr_res)
+            end
+  in
+    loop(t, i, tl_res, tr_res);
+    (tl_res, tr_res)
+  end
+#+END_SRC
+
+The ~let~ body is roughly the same, there is a ~loop~ function which traverses
+the tree and going left or right depending on the priority at the node and the
+subtree is "unfolded", moved and refolded so it can be mutated. Unlike [[Merge][merge]]
+instead of a single stack variable here we have two, ~tl_res~ and ~tr_res~ to
+build the left and right treap. Other than that if [[Merge][merge]] makes sense there's
+nothing new to ~split_binary~.
+
+** Slower Split Binary
+As an aside the version above is roughly 20% faster than the one I had originally. The slower
+version does not use any stack variables and passes back C structs on each
+recursive call. The version above written by [[https://groups.google.com/d/msg/ats-lang-users/EaTmKO661yA/P6leqrb1CgAJ][Hongwei Xi]] brings this
+implementation of treap up to the exact same performance of the fastest [[https://github.com/frol/completely-unscientific-benchmarks#linux-arch-linux-x64-intel-core-i7-4710hq-cpu-1][C++
+version]].
+#+BEGIN_EXAMPLE
 implement split_binary(t,i) =
   let
     fun loop (
@@ -262,13 +325,7 @@ implement split_binary(t,i) =
   in
     loop(t)
   end
-#+END_SRC
-
-The ~let~ body is roughly the same, there is a ~loop~ function which traverses
-the tree and going left or right depending on the priority at the node and the
-subtree is "unfolded", moved and refolded so it can be mutated. If [[Merge][merge]] makes
-sense there's nothing new to ~split_binary~.
-
+#+END_EXAMPLE
 
 * And the rest ...
 The rest of the operations just delegate to the two primitives [[Merge][merge]] and [[Split Binary][split

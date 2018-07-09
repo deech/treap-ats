@@ -41,5 +41,4 @@ rm treap_dats.c
 strip treap
 
 "$PATSHOME/bin/patscc" -O3 -flto -s -D_GNU_SOURCE -DATS_MEMALLOC_LIBC -I${PATSHOME}/contrib -O3 -o treap_manual treap_manual.dats -latslib
-rm treap_manual_dats.c
 strip treap_manual

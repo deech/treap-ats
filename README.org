@@ -39,29 +39,7 @@ I have only built this repo on Linux, OSX may work, Windows probably will not.
 The performance of the first GC'ed implementation is pretty bad which is
 expected because ATS falls back to ~libgc~ which isn't known for its speed.
 
-However I was disappointed with the second, it is currently trailing
-[[https://github.com/frol/completely-unscientific-benchmarks#tuned-implementations-scoreboard][Nim "fast"]] benchmark and I was hoping to get into the C++ range given the amount
-of control over memory ATS affords. As it turns out the problem is that the
-current manually managed implementation allocates and frees a lot more than
-expected:
-#+BEGIN_EXAMPLE
-==14206== Memcheck, a memory error detector
-==14206== Copyright (C) 2002-2015, and GNU GPL'd, by Julian Seward et al.
-==14206== Using Valgrind-3.12.0.SVN and LibVEX; rerun with -h for copyright info
-==14206== Command: ./treap_manual
-==14206== 
-331665
-==14206== 
-==14206== HEAP SUMMARY:
-==14206==     in use at exit: 0 bytes in 0 blocks
-==14206==   total heap usage: 666,667 allocs, 666,667 frees, 13,334,344 bytes allocated
-==14206== 
-==14206== All heap blocks were freed -- no leaks are possible
-==14206== 
-==14206== For counts of detected and suppressed errors, rerun with: -v
-==14206== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
-#+END_EXAMPLE
-
-13MB is hilariously bad, the Nim implementation with GC on is a third of that.
-I'll chalk it up to my inexperience with ATS and will update the implementation
-when I figure it out but I wanted to get something out there in the interim.
+The second, however, performs as well as the [[https://github.com/frol/completely-unscientific-benchmarks#linux-arch-linux-x64-intel-core-i7-4710hq-cpu-1][fastest C++ entry]] with and is
+completely typesafe, but not without a [[https://groups.google.com/d/topic/ats-lang-users/EaTmKO661yA/discussion][lot of help]] from Hongwei Xi, the creator of
+ATS, so a huge thanks to him. The key was use references in tight inner loops
+and to avoid indirection in the layout of the treap data structure itself.

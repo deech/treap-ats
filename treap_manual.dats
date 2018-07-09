@@ -65,38 +65,41 @@ extern fun split_binary(
   i : int
 ): (treap_vt, treap_vt)
 
-implement split_binary(t,i) =
+implement
+split_binary(t,i) =
   let
+    var tl_res: treap_vt
+    var tr_res: treap_vt
     fun loop (
-          curr : treap_vt
-        ): (treap_vt, treap_vt) =
-        case+ curr of
-          | ~treap_vt_nil() => (treap_vt_nil(),treap_vt_nil())
-          | @treap_vt_cons(lx,_,ll,lr) =>
-              if (lx < i) then
-                let
-                  val _lr = lr
-                  val (l,r) = loop(_lr)
-                in
-                  begin
-                    lr := l;
-                    fold@(curr);
-                    (curr,r)
-                  end
-                end
-              else
-                let
-                  val _ll = ll
-                  val (l,r) = loop(_ll)
-                in
-                  begin
-                    ll := r;
-                    fold@(curr);
-                    (l,curr)
-                  end
-                end
+      t : treap_vt,
+      i : int,
+      tl_res: &treap_vt? >> treap_vt,
+      tr_res: &treap_vt? >> treap_vt
+    ) : void =
+        case+ t of
+        | ~treap_vt_nil() =>
+           ( tl_res := treap_vt_nil()
+           ; tr_res := treap_vt_nil() )
+        | @treap_vt_cons (tx, ty, tl, tr) =>
+          if (tx < i) then
+            let
+              val tr_ = tr
+            in
+              tl_res := t;
+              loop(tr_, i, tr, tr_res);
+              fold@(tl_res)
+            end
+          else
+            let
+              val tl_ = tl
+            in
+              tr_res := t;
+              loop(tl_, i, tl_res, tl);
+              fold@(tr_res)
+            end
   in
-    loop(t)
+    loop(t, i, tl_res, tr_res);
+    (tl_res, tr_res)
   end
 
 extern fun merge3(
