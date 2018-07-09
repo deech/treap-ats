@@ -1,53 +1,57 @@
 #include "share/atspre_staload.hats"
 staload STDLIB = "libats/libc/SATS/stdlib.sats"
 
-datatype treap = treap of (@{x=int,y=lint}, Option(treap), Option(treap))
-typedef split_result = @{lower=Option(treap), equal=Option(treap), greater=Option(treap)}
+datatype treap =
+  | treap_nil
+  | treap_cons of
+    (@{x=int,y=lint}, treap, treap)
+
+typedef split_result = @{lower=treap, equal=treap, greater=treap}
 
 extern fun merge(
-  lower: Option(treap),
-  greater: Option(treap)
-): Option(treap)
+  lower: treap,
+  greater: treap
+): treap
 
 implement merge(lower,greater) =
   case+ (lower,greater) of
-    | (None(),g) => g
-    | (l, None()) => l
-    | (Some(treap(lp,ll,lr)), Some(treap(gp,gl,gr))) =>
+    | (treap_nil(),g) => g
+    | (l, treap_nil()) => l
+    | (treap_cons(lp,ll,lr), treap_cons(gp,gl,gr)) =>
          if (lp.y < gp.y)
-         then Some(treap(lp,ll,merge(lr, greater)))
-         else Some(treap(gp,merge(lower,gl),gr))
+         then treap_cons(lp,ll,merge(lr, greater))
+         else treap_cons(gp,merge(lower,gl),gr)
 
 extern fun split_binary(
-  t : Option(treap),
+  t : treap,
   value : int
-):(Option(treap), Option(treap))
+):(treap, treap)
 
 implement split_binary(t,value) =
   case+ t of
-    | None() =>  (None(), None())
-    | Some(treap(p,l,r)) =>
+    | treap_nil() =>  (treap_nil(), treap_nil())
+    | treap_cons(p,l,r) =>
        if (p.x < value) then
          let
            val (new_l,new_r) = split_binary(r,value)
          in
-           (Some(treap(p,l,new_l)), new_r)
+           (treap_cons(p,l,new_l), new_r)
          end
        else
          let
            val (new_l,new_r) = split_binary(l,value)
          in
-           (new_l, Some(treap(p,new_r,r)))
+           (new_l, treap_cons(p,new_r,r))
          end
 
 extern fun merge3 (
    r : split_result
-): Option(treap)
+): treap
 
 implement merge3(r) = merge((merge(r.lower,r.equal)), r.greater)
 
 extern fun split(
-  orig : Option(treap),
+  orig : treap,
   value : int
 ) : split_result
 
@@ -60,9 +64,9 @@ implement split(orig, value) =
   end
 
 extern fun has_value(
-  t : Option(treap),
+  t : treap,
   x : int
-): (Option(treap), bool)
+): (treap, bool)
 
 implement has_value(t,x) =
   let
@@ -70,33 +74,33 @@ implement has_value(t,x) =
     val merged = merge3(leg)
   in
     case+ leg.equal of
-      | Some(_) => (merged, true)
-      | None() => (merged, false)
+      | treap_cons(_,_,_) => (merged, true)
+      | treap_nil() => (merged, false)
   end
 
 extern fun new_treap(
   x : int
-) : Option(treap)
+) : treap
 
 implement new_treap(x) =
   let
     val seed = $STDLIB.random()
   in
-    Some(treap(@{x=x,y=seed},None(),None()))
+    treap_cons(@{x=x,y=seed},treap_nil(),treap_nil())
   end
 
 extern fun insert(
-  t : Option(treap),
+  t : treap,
   x : int
-): Option(treap)
+): treap
 
 implement insert(t,x) =
   let
     val leg = split(t,x)
   in
     case+ leg.equal of
-      | Some(_) => merge3(leg)
-      | None() =>
+      | treap_cons(_,_,_) => merge3(leg)
+      | treap_nil() =>
           let
             val new = new_treap(x)
           in
@@ -105,9 +109,9 @@ implement insert(t,x) =
   end
 
 extern fun erase(
-  t : Option(treap),
+  t : treap,
   x : int
-) : Option(treap)
+) : treap
 
 implement erase(t,x) =
   let
@@ -116,13 +120,13 @@ implement erase(t,x) =
     merge(leg.lower,leg.greater)
   end
 
-extern fun empty():Option(treap)
-implement empty() = None
+extern fun empty():treap
+implement empty() = treap_nil()
 
 implement main0(argc,argv) =
   let
     fun loop(
-      t : Option(treap),
+      t : treap,
       i : int,
       curr : int,
       res : int
