@@ -4,41 +4,55 @@ GCC=gcc
 ATSVER=0.2.12
 ATSLANGURL_github=http://ats-lang.github.io
 ATSPACK=ats-lang-anairiats-${ATSVER}
-ATSHOME=${PWD}/${DIRECTORY}/${ATSPACK}
-ATSHOMERELOC=ATS-${ATSVER}
-PATSHOME=${PWD}/${DIRECTORY}/ATS2
+export ATSHOME=${PWD}/${DIRECTORY}/${ATSPACK}
+export ATSHOMERELOC=ATS-${ATSVER}
+export PATSHOME=${PWD}/${DIRECTORY}/ATS2
 PATSUTILS=${PWD}/${DIRECTORY}/PostiATS-Utilities
-PATH=$PATSHOME/bin:$PATSUTILS:${PATH}
-PATSCONTRIB=${PWD}/${DIRECTORY}/ATS2-contrib
-
+export PATSCONTRIB=${PWD}/${DIRECTORY}/ATS2-contrib
+export TEMPTORY=${PWD}/${DIRECTORY}/ATS-Temptory
+PATH=$PATSHOME/bin:$PATSUTILS:${TEMPTORY}/bin:${PATH}
 
 if [ ! -d "$DIRECTORY" ]; then
   mkdir -p "$DIRECTORY"
 fi
 
-if [ ! -f "$PATSHOME/bin/patscc" ]; then
+if [ ! -f "$ATSHOME/bin/atsopt" ];then
   (cd "$DIRECTORY" &&
     wget https://github.com/ats-lang/ats-lang.github.io/raw/master/ATS-Anairiats/"$ATSPACK".tgz
-    tar -zxf "$ATSPACK".tgz
-    (cd "$ATSPACK" && ./configure&&make CC=${GCC} all_ngc)
-    (cd "$ATSPACK"/ccomp/runtime/GCATS && make && make clean)
-    git clone https://github.com/githwxi/ATS-Postiats.git ATS2
-    git clone https://github.com/githwxi/ATS-Postiats-contrib.git ATS2-contrib
-    (cd ATS2 && cp "$ATSPACK"/config.h .)
-    (cd ATS2 && time make -f Makefile_devl)
-    (cd ATS2/src && make cleanall)
-    (cd ATS2/src/CBOOT && make -C prelude)
-    (cd ATS2/src/CBOOT && make -C libc)
-    (cd ATS2/src/CBOOT && make -C libats)
-    (cd ATS2/utils/libatsopt && make && make clean)
-    cp -f ATS2/ccomp/atslib/lib/libatsopt.a "$ATSPACK"/ccomp/lib
-    (cd ATS2/contrib/CATS-parsemit && time make all)
-    git clone https://github.com/Hibou57/PostiATS-Utilities.git
-  )
+  tar -zxf "$ATSPACK".tgz
+  (cd "$ATSPACK" && ./configure && make CC=${GCC} all_ngc)
+  (cd "$ATSPACK"/ccomp/runtime/GCATS && make && make clean))
 fi
-"$PATSHOME/bin/patscc" -O3 -flto -s -D_GNU_SOURCE -DATS_MEMALLOC_GCBDW -O2 -I${PATSHOME}/contrib -o treap treap.dats -lgc -latslib
-rm treap_dats.c
+
+if [ ! -f "$PATSHOME/bin/patsopt" ];then
+    (cd "$DIRECTORY" &&
+      git clone --depth=1 https://github.com/githwxi/ATS-Postiats.git ATS2
+      git clone --depth=1 https://github.com/githwxi/ATS-Postiats-contrib.git ATS2-contrib
+      (cd ATS2 && cp "$ATSPACK"/config.h .)
+      (cd ATS2 && time make -f Makefile_devl)
+      (cd ATS2/src && make cleanall)
+      (cd ATS2/src/CBOOT && make -C prelude)
+      (cd ATS2/src/CBOOT && make -C libc)
+      (cd ATS2/src/CBOOT && make -C libats)
+      (cd ATS2/utils/libatsopt && make && make clean)
+      cp -f ATS2/ccomp/atslib/lib/libatsopt.a "$ATSPACK"/ccomp/lib
+      (cd ATS2/contrib/CATS-parsemit && time make all))
+fi
+
+if [ ! -f "$TEMPTORY/bin/tempacc" ]; then
+  (cd "$DIRECTORY" &&
+    git clone git@github.com:githwxi/ATS-Temptory
+    (cd "$TEMPTORY" &&
+      (cd srcgen && make -f Makefile) &&
+      (cp -f srcgen/BUILD/tempopt bin/tempopt) &&
+      (cd srcgen && make CBOOT) &&
+      (cd srcgen/CBOOT && make tempopt && ./tempopt) &&
+      (cd utils/tempacc && make copy build) &&
+      (cp utils/tempacc/BUILD/tempacc bin/.)))
+fi
+
+"$TEMPTORY/bin/tempacc" -O2 -flto -s -DATS_MEMALLOC_LIBC -o treap treap.dats -lgc
 strip treap
 
-"$PATSHOME/bin/patscc" -O3 -flto -s -D_GNU_SOURCE -DATS_MEMALLOC_LIBC -I${PATSHOME}/contrib -O3 -o treap_manual treap_manual.dats -latslib
+"$TEMPTORY/bin/tempacc" -O2 -flto -s -DATS_MEMALLOC_LIBC -o treap_manual treap_manual.dats
 strip treap_manual

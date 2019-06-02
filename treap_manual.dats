@@ -1,9 +1,9 @@
-#include "share/atspre_staload.hats"
-staload STDLIB = "libats/libc/SATS/stdlib.sats"
+#include "share/HATS/temptory_staload_bucs320.hats"
+#staload STDLIB = "libats/libc/SATS/stdlib.sats"
 
 datavtype treap_vt =
   | treap_vt_nil
-  | treap_vt_cons of (int,lint,treap_vt,treap_vt)
+  | treap_vt_cons of (int,int,treap_vt,treap_vt)
 
 extern fun free_treap(
   t : treap_vt
@@ -143,7 +143,7 @@ extern fun new_treap(
 ): treap_vt
 
 implement new_treap(i) =
-  treap_vt_cons(i,$STDLIB.random(),treap_vt_nil(),treap_vt_nil())
+  treap_vt_cons(i,$STDLIB.rand(),treap_vt_nil(),treap_vt_nil())
 
 extern fun insert(
   t: treap_vt,
@@ -190,10 +190,10 @@ implement main0(argc,argv) =
           end
         | _ =>
           let
-            val curr = (curr*57+43) mod 10007
+            val curr = (curr*57+43) % 10007
             val i = i+1
           in
-            case (i mod 3) of
+            case (i % 3) of
               | 0 => loop(insert(t,curr),i,curr,res)
               | 1 => loop(erase(t,curr),i,curr,res)
               | 2 =>

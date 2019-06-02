@@ -1,10 +1,10 @@
-#include "share/atspre_staload.hats"
-staload STDLIB = "libats/libc/SATS/stdlib.sats"
+#include "share/HATS/temptory_staload_bucs320.hats"
+#staload STDLIB = "libats/libc/SATS/stdlib.sats"
 
 datatype treap =
   | treap_nil
   | treap_cons of
-    (@{x=int,y=lint}, treap, treap)
+    (@{x=int,y=int}, treap, treap)
 
 typedef split_result = @{lower=treap, equal=treap, greater=treap}
 
@@ -84,7 +84,7 @@ extern fun new_treap(
 
 implement new_treap(x) =
   let
-    val seed = $STDLIB.random()
+    val seed = $STDLIB.rand()
   in
     treap_cons(@{x=x,y=seed},treap_nil(),treap_nil())
   end
@@ -135,10 +135,10 @@ implement main0(argc,argv) =
         | i when i = (1000000 - 1) => res
         | _ =>
           let
-            val curr = (curr * 57 + 43) mod 10007
+            val curr = (curr * 57 + 43) % 10007
             val i = i + 1
           in
-            case (i mod 3) of
+            case (i % 3) of
               | 0 => loop(insert(t,curr),i,curr,res)
               | 1 => loop(erase(t,curr),i,curr,res)
               | 2 =>
