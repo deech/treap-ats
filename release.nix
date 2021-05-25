@@ -2,14 +2,15 @@ let
   pkgs = import <nixpkgs> {};
   temptory = pkgs.callPackage ./temptory.nix {};
 
-  f = name: pkgs.stdenv.mkDerivation {
+  f = name: extra_flags: pkgs.stdenv.mkDerivation {
     inherit name;
     src = ./.;
-    nativeBuildInputs = with pkgs; [ ats temptory ];
+    buildInputs = [ pkgs.boehmgc ];
+    nativeBuildInputs = [ pkgs.ats temptory ];
     ATSHOME = "${pkgs.ats}";
     TEMPTORY = "${temptory}";
     buildPhase = ''
-      tempacc -O2 -flto -s -DATS_MEMALLOC_LIBC -o ${name} ${name}.dats
+      tempacc -O2 -flto -s -DATS_MEMALLOC_LIBC -o ${name} ${name}.dats ${extra_flags}
     '';
     installPhase = ''
       mkdir -p $out/bin
@@ -18,6 +19,6 @@ let
   };
 in {
   inherit temptory;
-  treap = f "treap";
-  treap_manual = f "treap_manual";
+  treap = f "treap" "-lgc";
+  treap_manual = f "treap_manual" "";
 }
